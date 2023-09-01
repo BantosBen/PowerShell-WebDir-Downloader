@@ -43,13 +43,12 @@ function Download-Items {
         [string]$Folder
     )
     try {
-        $response = Invoke-WebRequest -Uri $Url
-    }
-    catch {
-        Write-Host "Failed to access $Url. Skipping..."
+        $response = Invoke-WebRequest -Uri $Url -UserAgent "Mozilla/5.0"
+    } catch {
+        Write-Host "Failed to access $Url. Skipping... Error: $($_.Exception.Message)"
         return
     }
-    $links = $response.Links | Where-Object { $_.href -ne "../" -and $_.innerText -ne "web.config" }
+    $links = $response.Links | Where-Object {$_.href -ne "../" -and $_.innerText -ne "web.config"}
 
     foreach ($link in $links) {
         $itemUrl = "$Url/$($link.href)"
@@ -61,15 +60,17 @@ function Download-Items {
                 New-Item -Path $itemPath -ItemType Directory
             }
             Download-Items -Url $itemUrl -Folder $itemPath
-        }
-        else {
+        } else {
             # It's a file
-            if (Test-Path $itemPath) {
-                Write-Host "$itemPath already exists. Skipping..."
-            }
-            else {
-                Invoke-WebRequest -Uri $itemUrl -OutFile $itemPath
-                Write-Host "Downloaded $itemPath"
+            try {
+                if (Test-Path $itemPath) {
+                    Write-Host "$itemPath already exists. Skipping..."
+                } else {
+                    Invoke-WebRequest -Uri $itemUrl -OutFile $itemPath -UserAgent "Mozilla/5.0"
+                    Write-Host "Downloaded $itemPath"
+                }
+            } catch {
+                Write-Host "Failed to download $itemUrl. Error: $($_.Exception.Message)"
             }
         }
     }
@@ -77,3 +78,4 @@ function Download-Items {
 
 # Start the download process
 Download-Items -Url $Downloadurl -Folder $DownloadToFolder
+
